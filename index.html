@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kinetic Motion Blur Generator</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- Hidden SVG Filter for Horizontal-Only Motion Blur -->
+  <svg style="display: none;">
+    <defs>
+      <filter id="motion-blur-heavy">
+        <feGaussianBlur id="blur-heavy-val" stdDeviation="45,0" />
+      </filter>
+      <filter id="motion-blur-sharp">
+        <feGaussianBlur id="blur-sharp-val" stdDeviation="6,0" />
+      </filter>
+    </defs>
+  </svg>
+
+  <div class="app-container">
+    
+    <!-- Left Sidebar: Controls -->
+    <div class="controls-panel">
+      <h2>Controls</h2>
+      
+      <div class="control-group">
+        <label for="image-input">1. Upload Background</label>
+        <input type="file" id="image-input" accept="image/*">
+      </div>
+
+      <div class="control-group">
+        <label for="bg-zoom-input">Image Zoom multiplier (e.g. 1 = 100%)</label>
+        <input type="number" id="bg-zoom-input" step="0.1" value="1.05">
+      </div>
+
+      <div class="control-group">
+        <label for="text-input">2. Type Text</label>
+        <input type="text" id="text-input" value="RUN" placeholder="Type something...">
+      </div>
+
+      <div class="control-group">
+        <label for="text-zoom-input">Text Size (vw units)</label>
+        <input type="number" id="text-zoom-input" step="0.5" value="7.5">
+      </div>
+
+      <div class="control-group">
+        <label for="blur-slider">3. Motion Blur Intensity</label>
+        <input type="range" id="blur-slider" min="1" max="200" value="45">
+      </div>
+
+      <div class="control-group">
+        <label for="color-input">4. Text Color</label>
+        <input type="color" id="color-input" value="#ffffff">
+      </div>
+    </div>
+
+    <!-- Right Area: Canvas Preview -->
+    <div class="preview-panel">
+      <div class="poster-canvas" id="poster-canvas">
+        <!-- Background Image Layer -->
+        <div class="bg-layer" id="bg-layer"></div>
+        
+        <!-- Text Layers Container -->
+        <div class="text-container">
+          <h1 class="text-layer blur-heavy" id="text-heavy">RUN</h1>
+          <h1 class="text-layer blur-sharp" id="text-sharp">RUN</h1>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    const imageInput = document.getElementById('image-input');
+    const textInput = document.getElementById('text-input');
+    const blurSlider = document.getElementById('blur-slider');
+    const colorInput = document.getElementById('color-input');
+    const bgZoomInput = document.getElementById('bg-zoom-input');
+    const textZoomInput = document.getElementById('text-zoom-input');
+    
+    const bgLayer = document.getElementById('bg-layer');
+    const textHeavy = document.getElementById('text-heavy');
+    const textSharp = document.getElementById('text-sharp');
+    const textLayers = document.querySelectorAll('.text-layer');
+    
+    const blurHeavyVal = document.getElementById('blur-heavy-val');
+    const blurSharpVal = document.getElementById('blur-sharp-val');
+
+    // Handle Image Upload
+    imageInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          bgLayer.style.backgroundImage = `url('${event.target.result}')`;
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+
+    // Handle Image Zoom / Scale (No limits)
+    bgZoomInput.addEventListener('input', (e) => {
+      bgLayer.style.transform = `scale(${e.target.value})`;
+    });
+
+    // Handle Text Changes
+    textInput.addEventListener('input', (e) => {
+      const val = e.target.value;
+      textHeavy.textContent = val;
+      textSharp.textContent = val;
+    });
+
+    // Handle Text Resizing (No limits)
+    textZoomInput.addEventListener('input', (e) => {
+      textLayers.forEach(layer => {
+        layer.style.fontSize = `${e.target.value}vw`;
+      });
+    });
+
+    // Handle Live Blur Adjustments
+    blurSlider.addEventListener('input', (e) => {
+      const value = parseInt(e.target.value);
+      blurHeavyVal.setAttribute('stdDeviation', `${value},0`);
+      blurSharpVal.setAttribute('stdDeviation', `${Math.max(1, value / 7)},0`);
+    });
+
+    // Handle Text Color Changes
+    colorInput.addEventListener('input', (e) => {
+      textHeavy.style.color = e.target.value;
+      textSharp.style.color = e.target.value;
+    });
+  </script>
+</body>
+</html>

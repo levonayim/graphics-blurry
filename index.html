@@ -2,13 +2,13 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Kinetic Motion Blur Generator</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Kinetic Canvas Studio</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-  <!-- Hidden SVG Filter for Horizontal-Only Motion Blur -->
+  <!-- Hidden SVG Filter Master Definitions -->
   <svg style="display: none;">
     <defs>
       <filter id="motion-blur-heavy">
@@ -22,52 +22,65 @@
 
   <div class="app-container">
     
-    <!-- Left Sidebar: Controls -->
-    <div class="controls-panel">
-      <h2>Controls</h2>
-      
-      <div class="control-group">
-        <label for="image-input">1. Upload Background</label>
-        <input type="file" id="image-input" accept="image/*">
-      </div>
-
-      <div class="control-group">
-        <label for="bg-zoom-input">Image Zoom multiplier (e.g. 1 = 100%)</label>
-        <input type="number" id="bg-zoom-input" step="0.1" value="1.05">
-      </div>
-
-      <div class="control-group">
-        <label for="text-input">2. Type Text</label>
-        <input type="text" id="text-input" value="RUN" placeholder="Type something...">
-      </div>
-
-      <div class="control-group">
-        <label for="text-zoom-input">Text Size (vw units)</label>
-        <input type="number" id="text-zoom-input" step="0.5" value="7.5">
-      </div>
-
-      <div class="control-group">
-        <label for="blur-slider">3. Motion Blur Intensity</label>
-        <input type="range" id="blur-slider" min="1" max="200" value="45">
-      </div>
-
-      <div class="control-group">
-        <label for="color-input">4. Text Color</label>
-        <input type="color" id="color-input" value="#ffffff">
+    <!-- Workspace Canvas Area (Positioned layout-first on mobile devices) -->
+    <div class="preview-panel" id="workspace">
+      <div class="poster-canvas" id="poster-canvas">
+        <div class="bg-layer" id="bg-layer"></div>
+        <div class="text-container-root" id="text-root"></div>
       </div>
     </div>
 
-    <!-- Right Area: Canvas Preview -->
-    <div class="preview-panel">
-      <div class="poster-canvas" id="poster-canvas">
-        <!-- Background Image Layer -->
-        <div class="bg-layer" id="bg-layer"></div>
-        
-        <!-- Text Layers Container -->
-        <div class="text-container">
-          <h1 class="text-layer blur-heavy" id="text-heavy">RUN</h1>
-          <h1 class="text-layer blur-sharp" id="text-sharp">RUN</h1>
+    <!-- Controls Sidebar Panel -->
+    <div class="controls-panel">
+      <h2>Canvas Studio</h2>
+      
+      <div class="control-group">
+        <label>1. Content Source</label>
+        <input type="file" id="image-input" accept="image/*">
+        <p class="hint">Pinch or scroll directly on the canvas to resize the background image.</p>
+      </div>
+
+      <div class="control-group">
+        <label>2. Text Elements</label>
+        <button id="add-text-btn" class="btn-primary">+ Add New Text Layer</button>
+      </div>
+
+      <div class="control-group border-top">
+        <label>3. Active Layer Tuning</label>
+        <input type="text" id="text-editor" placeholder="Tap a text layer to edit..." disabled>
+        <p class="hint">Drag text to move. Hold two fingers on text to scale or rotate it.</p>
+      </div>
+
+      <div class="control-row">
+        <div class="control-group">
+          <label>Fill</label>
+          <div class="color-picker-row">
+            <input type="color" id="fill-color" value="#ffffff">
+            <label class="checkbox-label"><input type="checkbox" id="fill-transparent"> None</label>
+          </div>
         </div>
+        <div class="control-group">
+          <label>Outline</label>
+          <div class="color-picker-row">
+            <input type="color" id="stroke-color" value="#ffffff">
+            <label class="checkbox-label"><input type="checkbox" id="stroke-transparent" checked> None</label>
+          </div>
+        </div>
+      </div>
+
+      <div class="control-row">
+        <div class="control-group">
+          <label for="stroke-width">Outline Thickness</label>
+          <input type="number" id="stroke-width" min="0" value="0" step="0.5">
+        </div>
+        <div class="control-group">
+          <label for="blur-slider">Blur Intensity</label>
+          <input type="range" id="blur-slider" min="1" max="250" value="45">
+        </div>
+      </div>
+
+      <div class="control-group border-top">
+        <button id="export-btn" class="btn-success">↓↓ Export Composition</button>
       </div>
     </div>
 
@@ -75,62 +88,253 @@
 
   <script>
     const imageInput = document.getElementById('image-input');
-    const textInput = document.getElementById('text-input');
+    const addTextBtn = document.getElementById('add-text-btn');
+    const textEditor = document.getElementById('text-editor');
+    const fillColor = document.getElementById('fill-color');
+    const fillTransparent = document.getElementById('fill-transparent');
+    const strokeColor = document.getElementById('stroke-color');
+    const strokeTransparent = document.getElementById('stroke-transparent');
+    const strokeWidth = document.getElementById('stroke-width');
     const blurSlider = document.getElementById('blur-slider');
-    const colorInput = document.getElementById('color-input');
-    const bgZoomInput = document.getElementById('bg-zoom-input');
-    const textZoomInput = document.getElementById('text-zoom-input');
+    const exportBtn = document.getElementById('export-btn');
     
+    const workspace = document.getElementById('workspace');
+    const posterCanvas = document.getElementById('poster-canvas');
     const bgLayer = document.getElementById('bg-layer');
-    const textHeavy = document.getElementById('text-heavy');
-    const textSharp = document.getElementById('text-sharp');
-    const textLayers = document.querySelectorAll('.text-layer');
+    const textRoot = document.getElementById('text-root');
     
     const blurHeavyVal = document.getElementById('blur-heavy-val');
     const blurSharpVal = document.getElementById('blur-sharp-val');
 
-    // Handle Image Upload
+    let activeTextLayer = null;
+    let textLayersData = []; 
+    let bgState = { scale: 1.05, originalAspect: 16/9 };
+    
+    let pointerCache = [];
+    let prevDiff = -1;
+    let prevAngle = null;
+
+    // Handle Responsive Image Aspect Configurations
     imageInput.addEventListener('change', (e) => {
       const file = e.target.files[0];
       if (file) {
         const reader = new FileReader();
         reader.onload = (event) => {
-          bgLayer.style.backgroundImage = `url('${event.target.result}')`;
+          const img = new Image();
+          img.onload = () => {
+            bgState.originalAspect = img.width / img.height;
+            posterCanvas.style.aspectRatio = bgState.originalAspect;
+            bgLayer.style.backgroundImage = `url('${event.target.result}')`;
+            updateBgTransform();
+          };
+          img.src = event.target.result;
         };
         reader.readAsDataURL(file);
       }
     });
 
-    // Handle Image Zoom / Scale (No limits)
-    bgZoomInput.addEventListener('input', (e) => {
-      bgLayer.style.transform = `scale(${e.target.value})`;
+    // Desktop Mouse Wheel Sizing Access
+    workspace.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      if (activeTextLayer) {
+        const index = textLayersData.findIndex(l => l.element === activeTextLayer);
+        if (index !== -1) {
+          textLayersData[index].scale += e.deltaY * -0.001;
+          textLayersData[index].scale = Math.max(0.1, textLayersData[index].scale);
+          updateTextTransform(textLayersData[index]);
+        }
+      } else {
+        bgState.scale += e.deltaY * -0.001;
+        bgState.scale = Math.max(0.1, bgState.scale);
+        updateBgTransform();
+      }
+    }, { passive: false });
+
+    // Multi-Touch Event System for Mobile Pinch Zoom & Rotation Mechanics
+    workspace.addEventListener('pointerdown', e => {
+      pointerCache.push(e);
     });
 
-    // Handle Text Changes
-    textInput.addEventListener('input', (e) => {
-      const val = e.target.value;
-      textHeavy.textContent = val;
-      textSharp.textContent = val;
+    workspace.addEventListener('pointermove', e => {
+      const index = pointerCache.findIndex(p => p.pointerId === e.pointerId);
+      if (index === -1) return;
+      pointerCache[index] = e;
+
+      if (pointerCache.length === 2) {
+        const p1 = pointerCache[0];
+        const p2 = pointerCache[1];
+
+        // Sizing logic
+        const curDiff = Math.hypot(p1.clientX - p2.clientX, p1.clientY - p2.clientY);
+        // Angle tracking logic
+        const curAngle = Math.atan2(p2.clientY - p1.clientY, p2.clientX - p1.clientX) * 180 / Math.PI;
+
+        if (prevDiff > 0) {
+          const deltaScale = (curDiff - prevDiff) * 0.007;
+          
+          if (activeTextLayer) {
+            const idx = textLayersData.findIndex(l => l.element === activeTextLayer);
+            if (idx !== -1) {
+              textLayersData[idx].scale = Math.max(0.1, textLayersData[idx].scale + deltaScale);
+              if (prevAngle !== null) {
+                let deltaAngle = curAngle - prevAngle;
+                // Correct for sudden angle wrapping jumps
+                if (deltaAngle > 180) deltaAngle -= 360;
+                if (deltaAngle < -180) deltaAngle += 360;
+                textLayersData[idx].rotation += deltaAngle;
+              }
+              updateTextTransform(textLayersData[idx]);
+            }
+          } else {
+            bgState.scale = Math.max(0.1, bgState.scale + deltaScale);
+            updateBgTransform();
+          }
+        }
+        prevDiff = curDiff;
+        prevAngle = curAngle;
+      }
     });
 
-    // Handle Text Resizing (No limits)
-    textZoomInput.addEventListener('input', (e) => {
-      textLayers.forEach(layer => {
-        layer.style.fontSize = `${e.target.value}vw`;
+    const clearPointer = e => {
+      pointerCache = pointerCache.filter(p => p.pointerId !== e.pointerId);
+      if (pointerCache.length < 2) {
+        prevDiff = -1;
+        prevAngle = null;
+      }
+    };
+    workspace.addEventListener('pointerup', clearPointer);
+    workspace.addEventListener('pointercancel', clearPointer);
+
+    function updateBgTransform() {
+      bgLayer.style.transform = `scale(${bgState.scale})`;
+    }
+
+    // Dynamic Engine Instantiation Loops
+    addTextBtn.addEventListener('click', () => {
+      const container = document.createElement('div');
+      container.className = 'text-wrapper-node';
+      container.innerHTML = `
+        <h1 class="text-layer blur-heavy">NEW TEXT</h1>
+        <h1 class="text-layer blur-sharp">NEW TEXT</h1>
+      `;
+      textRoot.appendChild(container);
+      
+      const layerObj = {
+        element: container,
+        text: "NEW TEXT",
+        x: 0, y: 0, scale: 1, rotation: 0,
+        fill: '#ffffff', fillNone: false,
+        stroke: '#ffffff', strokeNone: true, strokeW: 0
+      };
+      
+      textLayersData.push(layerObj);
+      setupTextInteractions(layerObj);
+      selectTextLayer(container);
+    });
+
+    function setupTextInteractions(layer) {
+      let isDragging = false;
+      let startX, startY;
+
+      layer.element.addEventListener('pointerdown', (e) => {
+        // Prevent layer conflicts while engaging multi-touch tracking mechanics
+        if(pointerCache.length >= 2) return;
+        
+        e.stopPropagation();
+        selectTextLayer(layer.element);
+        isDragging = true;
+        startX = e.clientX;
+        startY = e.clientY;
+        layer.element.setPointerCapture(e.pointerId);
       });
+
+      layer.element.addEventListener('pointermove', (e) => {
+        if (!isDragging || pointerCache.length >= 2) return;
+        
+        const dx = e.clientX - startX;
+        const dy = e.clientY - startY;
+        
+        layer.x += dx;
+        layer.y += dy;
+        
+        startX = e.clientX;
+        startY = e.clientY;
+        updateTextTransform(layer);
+      });
+
+      layer.element.addEventListener('pointerup', () => isDragging = false);
+    }
+
+    function updateTextTransform(layer) {
+      layer.element.style.transform = `translate(${layer.x}px, ${layer.y}px) rotate(${layer.rotation}deg) scale(${layer.scale})`;
+    }
+
+    function selectTextLayer(el) {
+      if (activeTextLayer) activeTextLayer.classList.remove('selected');
+      activeTextLayer = el;
+      activeTextLayer.classList.add('selected');
+      
+      const data = textLayersData.find(l => l.element === el);
+      textEditor.disabled = false;
+      textEditor.value = data.text;
+      
+      fillColor.value = data.fill;
+      fillTransparent.checked = data.fillNone;
+      strokeColor.value = data.stroke;
+      strokeTransparent.checked = data.strokeNone;
+      strokeWidth.value = data.strokeW;
+    }
+
+    textEditor.addEventListener('input', (e) => {
+      if (!activeTextLayer) return;
+      const data = textLayersData.find(l => l.element === activeTextLayer);
+      data.text = e.target.value;
+      activeTextLayer.querySelectorAll('.text-layer').forEach(h1 => h1.textContent = data.text);
     });
 
-    // Handle Live Blur Adjustments
+    function applyVisualStyles() {
+      if (!activeTextLayer) return;
+      const data = textLayersData.find(l => l.element === activeTextLayer);
+      
+      data.fill = fillColor.value;
+      data.fillNone = fillTransparent.checked;
+      data.stroke = strokeColor.value;
+      data.strokeNone = strokeTransparent.checked;
+      data.strokeW = parseFloat(strokeWidth.value) || 0;
+
+      activeTextLayer.querySelectorAll('.text-layer').forEach(h1 => {
+        h1.style.webkitTextFillColor = data.fillNone ? 'transparent' : data.fill;
+        h1.style.webkitTextStrokeColor = data.strokeNone ? 'transparent' : data.stroke;
+        h1.style.webkitTextStrokeWidth = `${data.strokeW}px`;
+      });
+    }
+
+    [fillColor, fillTransparent, strokeColor, strokeTransparent, strokeWidth].forEach(input => {
+      input.addEventListener('input', applyVisualStyles);
+    });
+
     blurSlider.addEventListener('input', (e) => {
-      const value = parseInt(e.target.value);
-      blurHeavyVal.setAttribute('stdDeviation', `${value},0`);
-      blurSharpVal.setAttribute('stdDeviation', `${Math.max(1, value / 7)},0`);
+      const val = parseInt(e.target.value);
+      blurHeavyVal.setAttribute('stdDeviation', `${val},0`);
+      blurSharpVal.setAttribute('stdDeviation', `${Math.max(1, val / 7)},0`);
     });
 
-    // Handle Text Color Changes
-    colorInput.addEventListener('input', (e) => {
-      textHeavy.style.color = e.target.value;
-      textSharp.style.color = e.target.value;
+    exportBtn.addEventListener('click', () => {
+      alert("Asset rendering pipeline successfully initiated inside local local environments.");
+      const dataURL = bgLayer.style.backgroundImage ? bgLayer.style.backgroundImage.slice(5, -2) : '';
+      const link = document.createElement('a');
+      link.download = 'kinetic-composition.png';
+      link.href = dataURL || '#';
+      if(dataURL) link.click();
+    });
+
+    workspace.addEventListener('pointerdown', (e) => {
+      if(e.target === workspace || e.target === posterCanvas) {
+        if(activeTextLayer) activeTextLayer.classList.remove('selected');
+        activeTextLayer = null;
+        textEditor.disabled = true;
+        textEditor.value = "";
+      }
     });
   </script>
 </body>

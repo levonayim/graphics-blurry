@@ -21,7 +21,6 @@ body {
   height: 100%;
 }
 
-/* Controls Panel Styling Configuration */
 .controls-panel {
   width: 340px;
   background-color: #1a1a1a;
@@ -67,13 +66,6 @@ label {
   letter-spacing: 0.5px;
 }
 
-.hint {
-  font-size: 0.75rem;
-  color: #666;
-  line-height: 1.3;
-}
-
-/* UI Inputs styling */
 input[type="text"],
 input[type="number"] {
   background: #2a2a2a;
@@ -84,6 +76,8 @@ input[type="number"] {
   font-size: 1rem;
   outline: none;
   width: 100%;
+  -webkit-user-select: text; /* Ensures input element remains selectable on iOS/Android */
+  user-select: text;
 }
 
 input[type="text"]:focus,
@@ -94,7 +88,6 @@ input[type="number"]:focus {
 input[type="file"] {
   color: #aaa;
   font-size: 0.85rem;
-  padding: 0.25rem 0;
 }
 
 input[type="range"] {
@@ -132,7 +125,6 @@ input[type="color"] {
   text-transform: none;
 }
 
-/* Global Buttons */
 .btn-primary, .btn-success {
   border: none;
   padding: 0.85rem;
@@ -145,7 +137,6 @@ input[type="color"] {
 .btn-primary { background-color: #fff; color: #000; }
 .btn-success { background-color: #2ea44f; color: #fff; margin-top: auto; }
 
-/* Workspace Canvas Architecture Layout */
 .preview-panel {
   flex: 1;
   display: flex;
@@ -178,7 +169,7 @@ input[type="color"] {
   height: 100%;
   background-size: cover;
   background-position: center;
-  filter: blur(4px) brightness(0.8) contrast(1.05);
+  filter: blur(0px) brightness(0.9) contrast(1.05); /* Default setting updated to crisp sharp clarity */
   transform-origin: center center;
   z-index: 1;
 }
@@ -234,7 +225,6 @@ input[type="color"] {
   opacity: 0.95;
 }
 
-/* --- MOBILE RESPONSIVE ENGINE REPAIR --- */
 @media (max-width: 768px) {
   .app-container {
     display: grid;
@@ -256,7 +246,6 @@ input[type="color"] {
     height: 100%;
     max-width: 100%;
     max-height: 100%;
-    /* object-contain scaling simulation natively blocks collapse loops */
     aspect-ratio: auto; 
   }
 
@@ -267,9 +256,5 @@ input[type="color"] {
     border-right: none;
     border-top: 1px solid #2d2d2d;
     padding: 1.25rem;
-  }
-  
-  .btn-success {
-    margin-top: 1rem;
   }
 }

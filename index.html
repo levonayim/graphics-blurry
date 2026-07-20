@@ -22,7 +22,7 @@
 
   <div class="app-container">
     
-    <!-- Workspace Canvas Area (Positioned layout-first on mobile devices) -->
+    <!-- Workspace Canvas Area -->
     <div class="preview-panel" id="workspace">
       <div class="poster-canvas" id="poster-canvas">
         <div class="bg-layer" id="bg-layer"></div>
@@ -37,18 +37,21 @@
       <div class="control-group">
         <label>1. Content Source</label>
         <input type="file" id="image-input" accept="image/*">
-        <p class="hint">Pinch or scroll directly on the canvas to resize the background image.</p>
       </div>
 
       <div class="control-group">
+        <label for="bg-blur-slider">Background Blur</label>
+        <input type="range" id="bg-blur-slider" min="0" max="30" value="0">
+      </div>
+
+      <div class="control-group border-top">
         <label>2. Text Elements</label>
         <button id="add-text-btn" class="btn-primary">+ Add New Text Layer</button>
       </div>
 
-      <div class="control-group border-top">
-        <label>3. Active Layer Tuning</label>
-        <input type="text" id="text-editor" placeholder="Tap a text layer to edit..." disabled>
-        <p class="hint">Drag text to move. Hold two fingers on text to scale or rotate it.</p>
+      <div class="control-group">
+        <label>3. Edit Selected Text</label>
+        <input type="text" id="text-editor" placeholder="Tap + Add New Text Layer first...">
       </div>
 
       <div class="control-row">
@@ -74,7 +77,7 @@
           <input type="number" id="stroke-width" min="0" value="0" step="0.5">
         </div>
         <div class="control-group">
-          <label for="blur-slider">Blur Intensity</label>
+          <label for="blur-slider">Motion Blur Intensity</label>
           <input type="range" id="blur-slider" min="1" max="250" value="45">
         </div>
       </div>
@@ -88,6 +91,7 @@
 
   <script>
     const imageInput = document.getElementById('image-input');
+    const bgBlurSlider = document.getElementById('bg-blur-slider');
     const addTextBtn = document.getElementById('add-text-btn');
     const textEditor = document.getElementById('text-editor');
     const fillColor = document.getElementById('fill-color');
@@ -114,7 +118,7 @@
     let prevDiff = -1;
     let prevAngle = null;
 
-    // Handle Responsive Image Aspect Configurations
+    // Handle Uploading & Resizing Background
     imageInput.addEventListener('change', (e) => {
       const file = e.target.files[0];
       if (file) {
@@ -131,6 +135,11 @@
         };
         reader.readAsDataURL(file);
       }
+    });
+
+    // Control Live Background Blur Options Dynamically
+    bgBlurSlider.addEventListener('input', (e) => {
+      bgLayer.style.filter = `blur(${e.target.value}px) brightness(0.9) contrast(1.05)`;
     });
 
     // Desktop Mouse Wheel Sizing Access
@@ -150,7 +159,7 @@
       }
     }, { passive: false });
 
-    // Multi-Touch Event System for Mobile Pinch Zoom & Rotation Mechanics
+    // Multi-Touch Input Engine
     workspace.addEventListener('pointerdown', e => {
       pointerCache.push(e);
     });
@@ -164,9 +173,7 @@
         const p1 = pointerCache[0];
         const p2 = pointerCache[1];
 
-        // Sizing logic
         const curDiff = Math.hypot(p1.clientX - p2.clientX, p1.clientY - p2.clientY);
-        // Angle tracking logic
         const curAngle = Math.atan2(p2.clientY - p1.clientY, p2.clientX - p1.clientX) * 180 / Math.PI;
 
         if (prevDiff > 0) {
@@ -178,7 +185,6 @@
               textLayersData[idx].scale = Math.max(0.1, textLayersData[idx].scale + deltaScale);
               if (prevAngle !== null) {
                 let deltaAngle = curAngle - prevAngle;
-                // Correct for sudden angle wrapping jumps
                 if (deltaAngle > 180) deltaAngle -= 360;
                 if (deltaAngle < -180) deltaAngle += 360;
                 textLayersData[idx].rotation += deltaAngle;
@@ -209,19 +215,19 @@
       bgLayer.style.transform = `scale(${bgState.scale})`;
     }
 
-    // Dynamic Engine Instantiation Loops
+    // Text Engine Mechanics
     addTextBtn.addEventListener('click', () => {
       const container = document.createElement('div');
       container.className = 'text-wrapper-node';
       container.innerHTML = `
-        <h1 class="text-layer blur-heavy">NEW TEXT</h1>
-        <h1 class="text-layer blur-sharp">NEW TEXT</h1>
+        <h1 class="text-layer blur-heavy">TEXT LAYER</h1>
+        <h1 class="text-layer blur-sharp">TEXT LAYER</h1>
       `;
       textRoot.appendChild(container);
       
       const layerObj = {
         element: container,
-        text: "NEW TEXT",
+        text: "TEXT LAYER",
         x: 0, y: 0, scale: 1, rotation: 0,
         fill: '#ffffff', fillNone: false,
         stroke: '#ffffff', strokeNone: true, strokeW: 0
@@ -237,9 +243,7 @@
       let startX, startY;
 
       layer.element.addEventListener('pointerdown', (e) => {
-        // Prevent layer conflicts while engaging multi-touch tracking mechanics
         if(pointerCache.length >= 2) return;
-        
         e.stopPropagation();
         selectTextLayer(layer.element);
         isDragging = true;
@@ -250,13 +254,10 @@
 
       layer.element.addEventListener('pointermove', (e) => {
         if (!isDragging || pointerCache.length >= 2) return;
-        
         const dx = e.clientX - startX;
         const dy = e.clientY - startY;
-        
         layer.x += dx;
         layer.y += dy;
-        
         startX = e.clientX;
         startY = e.clientY;
         updateTextTransform(layer);
@@ -275,8 +276,8 @@
       activeTextLayer.classList.add('selected');
       
       const data = textLayersData.find(l => l.element === el);
-      textEditor.disabled = false;
       textEditor.value = data.text;
+      textEditor.placeholder = "Type your text here...";
       
       fillColor.value = data.fill;
       fillTransparent.checked = data.fillNone;
@@ -320,10 +321,10 @@
     });
 
     exportBtn.addEventListener('click', () => {
-      alert("Asset rendering pipeline successfully initiated inside local local environments.");
+      alert("Composition processing complete.");
       const dataURL = bgLayer.style.backgroundImage ? bgLayer.style.backgroundImage.slice(5, -2) : '';
       const link = document.createElement('a');
-      link.download = 'kinetic-composition.png';
+      link.download = 'composition.png';
       link.href = dataURL || '#';
       if(dataURL) link.click();
     });
@@ -332,8 +333,8 @@
       if(e.target === workspace || e.target === posterCanvas) {
         if(activeTextLayer) activeTextLayer.classList.remove('selected');
         activeTextLayer = null;
-        textEditor.disabled = true;
         textEditor.value = "";
+        textEditor.placeholder = "Tap a text layer to edit...";
       }
     });
   </script>

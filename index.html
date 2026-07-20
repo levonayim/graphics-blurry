@@ -118,7 +118,7 @@
     let prevDiff = -1;
     let prevAngle = null;
 
-    // Handle Uploading & Resizing Background
+    // Handle Background Sizing & Uploads
     imageInput.addEventListener('change', (e) => {
       const file = e.target.files[0];
       if (file) {
@@ -137,12 +137,11 @@
       }
     });
 
-    // Control Live Background Blur Options Dynamically
     bgBlurSlider.addEventListener('input', (e) => {
       bgLayer.style.filter = `blur(${e.target.value}px) brightness(0.9) contrast(1.05)`;
     });
 
-    // Desktop Mouse Wheel Sizing Access
+    // Desktop Sizing
     workspace.addEventListener('wheel', (e) => {
       e.preventDefault();
       if (activeTextLayer) {
@@ -159,7 +158,7 @@
       }
     }, { passive: false });
 
-    // Multi-Touch Input Engine
+    // Multi-touch System
     workspace.addEventListener('pointerdown', e => {
       pointerCache.push(e);
     });
@@ -215,7 +214,7 @@
       bgLayer.style.transform = `scale(${bgState.scale})`;
     }
 
-    // Text Engine Mechanics
+    // Dynamic Text Generator Block
     addTextBtn.addEventListener('click', () => {
       const container = document.createElement('div');
       container.className = 'text-wrapper-node';
@@ -242,10 +241,13 @@
       let isDragging = false;
       let startX, startY;
 
+      // Event triggered when user selects / dragging begins
       layer.element.addEventListener('pointerdown', (e) => {
         if(pointerCache.length >= 2) return;
         e.stopPropagation();
+        
         selectTextLayer(layer.element);
+        
         isDragging = true;
         startX = e.clientX;
         startY = e.clientY;
@@ -276,6 +278,8 @@
       activeTextLayer.classList.add('selected');
       
       const data = textLayersData.find(l => l.element === el);
+      
+      // Update the structural text value mapping inside controls instantly
       textEditor.value = data.text;
       textEditor.placeholder = "Type your text here...";
       
@@ -284,13 +288,22 @@
       strokeColor.value = data.stroke;
       strokeTransparent.checked = data.strokeNone;
       strokeWidth.value = data.strokeW;
+      
+      // Synchronize visibility of custom borders styles natively
+      applyVisualStyles();
     }
 
+    // Dynamic Live Sychronizer loop - allows infinite consecutive text modifications
     textEditor.addEventListener('input', (e) => {
       if (!activeTextLayer) return;
+      
       const data = textLayersData.find(l => l.element === activeTextLayer);
       data.text = e.target.value;
-      activeTextLayer.querySelectorAll('.text-layer').forEach(h1 => h1.textContent = data.text);
+      
+      // Map new letters to layers cleanly
+      activeTextLayer.querySelectorAll('.text-layer').forEach(h1 => {
+        h1.textContent = data.text;
+      });
     });
 
     function applyVisualStyles() {
@@ -329,6 +342,7 @@
       if(dataURL) link.click();
     });
 
+    // Tap outside text element layer bounds to cleanly switch focused inspector visibility modes
     workspace.addEventListener('pointerdown', (e) => {
       if(e.target === workspace || e.target === posterCanvas) {
         if(activeTextLayer) activeTextLayer.classList.remove('selected');
